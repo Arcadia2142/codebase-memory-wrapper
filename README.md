@@ -1,0 +1,130 @@
+# codebase-memory-wrapper
+
+Minimal local MCP Streamable HTTP wrapper for `codebase-memory-mcp`.
+
+The wrapper exposes one local MCP endpoint and forwards tool calls to one lazy stdio
+`codebase-memory-mcp` child process. Requests can arrive concurrently, but the child
+receives only one request at a time.
+
+## Behavior
+
+- HTTP MCP endpoint: `http://127.0.0.1:39749/mcp`
+- Health endpoint: `http://127.0.0.1:39749/healthz`
+- Public transport: stateful MCP Streamable HTTP.
+- Backend transport: stdio child process.
+- Queue capacity: 128 pending requests.
+- Queue order: drain one MCP session completely before moving to the next session.
+- Child lifecycle: lazy start, idle stop after 20 minutes.
+- Timeout defaults: read 10 seconds, write 60 seconds, `index_repository` 5 minutes.
+- Retry defaults: read-only allowlist gets up to 2 retries after child failure.
+- Cancellation: queued requests are dropped; active backend calls intentionally run
+  until they complete or hit their configured timeout.
+
+`/healthz` returns HTTP 200 when the child is running or intentionally idle. It returns
+HTTP 503 only when recent child crashes cross the crash-loop threshold.
+
+## Configuration
+
+The child command is required. The app refuses to start without it.
+
+Configuration uses `appsettings.json` plus environment variable overrides. Important
+environment variables:
+
+```bash
+Wrapper__Child__Command=~/.local/bin/codebase-memory-mcp
+Wrapper__BindUrl=http://127.0.0.1:39749
+Wrapper__QueueCapacity=128
+```
+
+## Install As User Service
+
+Run:
+
+```bash
+./scripts/install-systemd.sh
+```
+
+The script publishes the framework-dependent app to:
+
+```text
+~/.local/share/codebase-memory-wrapper/app
+```
+
+It creates:
+
+```text
+~/.local/share/codebase-memory-wrapper/codebase-memory-wrapper.env
+~/.config/systemd/user/codebase-memory-wrapper.service
+```
+
+It autodetects `~/.local/bin/codebase-memory-mcp`. If it cannot find it, it asks for
+the path, verifies it is executable, writes it to the env file, then runs:
+
+```bash
+systemctl --user enable --now codebase-memory-wrapper.service
+```
+
+Useful commands:
+
+```bash
+systemctl --user status codebase-memory-wrapper.service
+journalctl --user -u codebase-memory-wrapper.service -f
+curl http://127.0.0.1:39749/healthz
+```
+
+## Codex MCP Config
+
+Update `~/.codex/config.toml` manually so Codex connects to the wrapper instead of
+starting `codebase-memory-mcp` directly:
+
+```toml
+[mcp_servers.codebase-memory-mcp]
+url = "http://127.0.0.1:39749/mcp"
+
+[mcp_servers.codebase-memory-mcp.tools.get_architecture]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.index_status]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.search_graph]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.get_graph_schema]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.trace_path]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.get_code_snippet]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.index_repository]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.list_projects]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.query_graph]
+approval_mode = "approve"
+```
+
+## Verification
+
+Build:
+
+```bash
+dotnet build
+```
+
+Run locally without installing:
+
+```bash
+Wrapper__Child__Command=~/.local/bin/codebase-memory-mcp dotnet run
+```
+
+Then check:
+
+```bash
+curl http://127.0.0.1:39749/healthz
+```
