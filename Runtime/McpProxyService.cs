@@ -11,6 +11,14 @@ public sealed class McpProxyService(
     ILogger<McpProxyService> logger)
 {
     /// <summary>
+    /// Proxies child initialization metadata through the request dispatcher.
+    /// </summary>
+    public Task<BackendSessionMetadata> GetSessionMetadataAsync(
+        string sessionId,
+        CancellationToken cancellationToken) =>
+        dispatcher.EnqueueAsync(sessionId, backend.GetSessionMetadataAsync, cancellationToken);
+
+    /// <summary>
     /// Proxies tools/list through the request dispatcher.
     /// </summary>
     public Task<ListToolsResult> ListToolsAsync(
@@ -18,6 +26,24 @@ public sealed class McpProxyService(
         ListToolsRequestParams request,
         CancellationToken cancellationToken) =>
         dispatcher.EnqueueAsync(sessionId, ct => backend.ListToolsAsync(request, ct), cancellationToken);
+
+    /// <summary>
+    /// Proxies prompts/list through the request dispatcher.
+    /// </summary>
+    public Task<ListPromptsResult> ListPromptsAsync(
+        string sessionId,
+        ListPromptsRequestParams request,
+        CancellationToken cancellationToken) =>
+        dispatcher.EnqueueAsync(sessionId, ct => backend.ListPromptsAsync(request, ct), cancellationToken);
+
+    /// <summary>
+    /// Proxies prompts/get through the request dispatcher.
+    /// </summary>
+    public Task<GetPromptResult> GetPromptAsync(
+        string sessionId,
+        GetPromptRequestParams request,
+        CancellationToken cancellationToken) =>
+        dispatcher.EnqueueAsync(sessionId, ct => backend.GetPromptAsync(request, ct), cancellationToken);
 
     /// <summary>
     /// Proxies tools/call through the request dispatcher.

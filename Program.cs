@@ -30,6 +30,18 @@ builder.Services.AddMcpServer()
         options.Stateless = false;
         options.IdleTimeout = wrapperOptions.Sessions.IdleTimeout;
         options.MaxIdleSessionCount = wrapperOptions.Sessions.MaxIdleSessionCount;
+        options.ConfigureSessionOptions = async (httpContext, sessionOptions, cancellationToken) =>
+        {
+            var proxy = httpContext.RequestServices.GetRequiredService<McpProxyService>();
+            var metadata = await proxy.GetSessionMetadataAsync(
+                $"initialize:{Guid.NewGuid():N}",
+                cancellationToken);
+
+            sessionOptions.ServerInstructions = metadata.ServerInstructions;
+            sessionOptions.Capabilities ??= new ServerCapabilities();
+            sessionOptions.Capabilities.Tools = metadata.Tools;
+            sessionOptions.Capabilities.Prompts = metadata.Prompts;
+        };
     })
     .WithListToolsHandler(async (request, cancellationToken) =>
     {
@@ -43,6 +55,19 @@ builder.Services.AddMcpServer()
     {
         var proxy = request.Services!.GetRequiredService<McpProxyService>();
         return await proxy.CallToolAsync(GetSessionId(request), request.Params!, cancellationToken);
+    })
+    .WithListPromptsHandler(async (request, cancellationToken) =>
+    {
+        var proxy = request.Services!.GetRequiredService<McpProxyService>();
+        return await proxy.ListPromptsAsync(
+            GetSessionId(request),
+            request.Params ?? new ListPromptsRequestParams(),
+            cancellationToken);
+    })
+    .WithGetPromptHandler(async (request, cancellationToken) =>
+    {
+        var proxy = request.Services!.GetRequiredService<McpProxyService>();
+        return await proxy.GetPromptAsync(GetSessionId(request), request.Params!, cancellationToken);
     });
 
 var app = builder.Build();

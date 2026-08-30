@@ -10,6 +10,14 @@ UNIT_DIR="$HOME/.config/systemd/user"
 UNIT_FILE="$UNIT_DIR/$APP_NAME.service"
 DEFAULT_CHILD="$HOME/.local/bin/codebase-memory-mcp"
 DOTNET_BIN="${CODEBASE_MEMORY_WRAPPER_DOTNET:-"$(command -v dotnet || true)"}"
+PORT="${CODEBASE_MEMORY_WRAPPER_PORT:-39749}"
+
+if [[ ! "$PORT" =~ ^[0-9]+$ ]] || ((PORT < 1 || PORT > 65535)); then
+    echo "CODEBASE_MEMORY_WRAPPER_PORT must be an integer between 1 and 65535: $PORT" >&2
+    exit 1
+fi
+
+BIND_URL="http://127.0.0.1:$PORT"
 
 escape_env_value() {
     local value="$1"
@@ -60,6 +68,7 @@ mkdir -p "$APP_DIR" "$UNIT_DIR"
 
 cat > "$ENV_FILE" <<ENVEOF
 Wrapper__Child__Command=$(escape_env_value "$CHILD_COMMAND")
+Wrapper__BindUrl=$(escape_env_value "$BIND_URL")
 DOTNET_ENVIRONMENT=Production
 ENVEOF
 
@@ -81,7 +90,8 @@ WantedBy=default.target
 UNITEOF
 
 systemctl --user daemon-reload
-systemctl --user enable --now "$APP_NAME.service"
+systemctl --user enable "$APP_NAME.service"
+systemctl --user restart "$APP_NAME.service"
 
 echo "Installed and started $APP_NAME.service"
-echo "MCP endpoint: http://127.0.0.1:39749/mcp"
+echo "MCP endpoint: $BIND_URL/mcp"

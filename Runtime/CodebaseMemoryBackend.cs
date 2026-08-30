@@ -33,6 +33,34 @@ public sealed class CodebaseMemoryBackend(
             await child.Client.ListToolsAsync(request, ct), cancellationToken);
 
     /// <summary>
+    /// Captures initialization metadata from the wrapped MCP child.
+    /// </summary>
+    public Task<BackendSessionMetadata> GetSessionMetadataAsync(CancellationToken cancellationToken) =>
+        ExecuteAsync<BackendSessionMetadata>("initialize", OperationKind.Read, (child, _) =>
+            Task.FromResult(new BackendSessionMetadata(
+                child.Client.ServerInstructions,
+                child.Client.ServerCapabilities.Tools,
+                child.Client.ServerCapabilities.Prompts)), cancellationToken);
+
+    /// <summary>
+    /// Lists prompts from the wrapped MCP child.
+    /// </summary>
+    public Task<ListPromptsResult> ListPromptsAsync(
+        ListPromptsRequestParams request,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync<ListPromptsResult>("prompts/list", OperationKind.Read, async (child, ct) =>
+            await child.Client.ListPromptsAsync(request, ct), cancellationToken);
+
+    /// <summary>
+    /// Gets a prompt from the wrapped MCP child.
+    /// </summary>
+    public Task<GetPromptResult> GetPromptAsync(
+        GetPromptRequestParams request,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync<GetPromptResult>("prompts/get", OperationKind.Read, async (child, ct) =>
+            await child.Client.GetPromptAsync(request, ct), cancellationToken);
+
+    /// <summary>
     /// Calls a tool on the wrapped MCP child.
     /// </summary>
     public Task<CallToolResult> CallToolAsync(
@@ -328,4 +356,28 @@ public sealed class CodebaseMemoryBackend(
             _recentCrashes.Dequeue();
         }
     }
+}
+
+/// <summary>
+/// Initialization metadata mirrored from the wrapped MCP child.
+/// </summary>
+public sealed class BackendSessionMetadata(
+    string? serverInstructions,
+    ToolsCapability? tools,
+    PromptsCapability? prompts)
+{
+    /// <summary>
+    /// Gets usage instructions advertised by the child.
+    /// </summary>
+    public string? ServerInstructions { get; } = serverInstructions;
+
+    /// <summary>
+    /// Gets the tools capability advertised by the child.
+    /// </summary>
+    public ToolsCapability? Tools { get; } = tools;
+
+    /// <summary>
+    /// Gets the prompts capability advertised by the child.
+    /// </summary>
+    public PromptsCapability? Prompts { get; } = prompts;
 }

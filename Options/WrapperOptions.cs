@@ -125,11 +125,14 @@ public sealed class RetryOptions
     public int MaxRetries { get; set; } = 2;
 
     /// <summary>
-    /// Tool names that are safe to retry after a child crash.
+    /// Operation names that are safe to retry after a child crash.
     /// </summary>
     public List<string> ReadOnlyRetryTools { get; set; } =
     [
+        "initialize",
         "tools/list",
+        "prompts/list",
+        "prompts/get",
         "search_graph",
         "get_code_snippet",
         "get_architecture",
@@ -138,6 +141,7 @@ public sealed class RetryOptions
         "list_projects",
         "get_graph_schema",
         "search_code",
+        "check_index_coverage",
         "query_graph"
     ];
 

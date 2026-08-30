@@ -2,9 +2,9 @@
 
 Minimal local MCP Streamable HTTP wrapper for `codebase-memory-mcp`.
 
-The wrapper exposes one local MCP endpoint and forwards tool calls to one lazy stdio
-`codebase-memory-mcp` child process. Requests can arrive concurrently, but the child
-receives only one request at a time.
+The wrapper exposes one local MCP endpoint and forwards tools, prompts, and backend
+instructions to one lazy stdio `codebase-memory-mcp` child process. Requests can arrive
+concurrently, but the child receives only one request at a time.
 
 ## Behavior
 
@@ -14,7 +14,9 @@ receives only one request at a time.
 - Backend transport: stdio child process.
 - Queue capacity: 128 pending requests.
 - Queue order: drain one MCP session completely before moving to the next session.
-- Child lifecycle: lazy start, idle stop after 20 minutes.
+- Protocol passthrough: tools and prompts, including pagination, plus backend instructions.
+- Child lifecycle: starts during the first public `initialize` so the wrapper can mirror
+  backend instructions and exact tools/prompts capabilities; idle stop after 20 minutes.
 - Timeout defaults: read 10 seconds, write 60 seconds, `index_repository` 5 minutes.
 - Retry defaults: read-only allowlist gets up to 2 retries after child failure.
 - Cancellation: queued requests are dropped; active backend calls intentionally run
@@ -42,6 +44,13 @@ Run:
 
 ```bash
 ./scripts/install-systemd.sh
+```
+
+The service listens on port `39749` by default. Set a different port during
+installation with:
+
+```bash
+CODEBASE_MEMORY_WRAPPER_PORT=39750 ./scripts/install-systemd.sh
 ```
 
 The script publishes the framework-dependent app to:
@@ -106,6 +115,9 @@ approval_mode = "approve"
 approval_mode = "approve"
 
 [mcp_servers.codebase-memory-mcp.tools.query_graph]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.check_index_coverage]
 approval_mode = "approve"
 ```
 
