@@ -135,6 +135,8 @@ public sealed class RetryOptions
         "prompts/get",
         "search_graph",
         "get_code_snippet",
+        "get_file_outline",
+        "compare_graphs",
         "get_architecture",
         "trace_path",
         "index_status",

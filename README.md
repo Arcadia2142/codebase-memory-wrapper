@@ -6,6 +6,16 @@ The wrapper exposes one local MCP endpoint and forwards tools, prompts, and back
 instructions to one lazy stdio `codebase-memory-mcp` child process. Requests can arrive
 concurrently, but the child receives only one request at a time.
 
+## Compatibility
+
+This version of the wrapper targets and has been tested with
+`codebase-memory-mcp 0.11.0`. Compatibility with other backend versions has not
+been verified for this revision.
+
+See [the compatibility report](docs/compatibility-0.11.0.md) for verified tools,
+parallel requests, child recovery, and known upstream limitations. Backend Cypher
+and graph-comparison limitations also apply when using the wrapper.
+
 ## Behavior
 
 - HTTP MCP endpoint: `http://127.0.0.1:39749/mcp`
@@ -70,7 +80,8 @@ It autodetects `~/.local/bin/codebase-memory-mcp`. If it cannot find it, it asks
 the path, verifies it is executable, writes it to the env file, then runs:
 
 ```bash
-systemctl --user enable --now codebase-memory-wrapper.service
+systemctl --user enable codebase-memory-wrapper.service
+systemctl --user restart codebase-memory-wrapper.service
 ```
 
 Useful commands:
@@ -119,7 +130,18 @@ approval_mode = "approve"
 
 [mcp_servers.codebase-memory-mcp.tools.check_index_coverage]
 approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.get_file_outline]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.compare_graphs]
+approval_mode = "approve"
 ```
+
+Tool definitions and results are discovered from the child rather than maintained
+as a wrapper-specific list. New read tools still need an entry in
+`Wrapper:Retry:ReadOnlyRetryTools` to recover automatically after a child crash.
+`get_file_outline` and `compare_graphs` are included in both configuration defaults.
 
 ## Verification
 
@@ -140,3 +162,12 @@ Then check:
 ```bash
 curl http://127.0.0.1:39749/healthz
 ```
+
+## License
+
+This wrapper is licensed under the [MIT License](LICENSE).
+
+The software is provided "AS IS", without warranty of any kind, express or implied.
+See [LICENSE](LICENSE) for the full terms and limitation of liability. This license
+applies to the wrapper; `codebase-memory-mcp` and other dependencies retain their
+own licenses.
